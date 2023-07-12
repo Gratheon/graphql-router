@@ -6,8 +6,31 @@ const {json} = require('body-parser');
 const cookieParser = require('cookie-parser');
 const jwt = require('jsonwebtoken');
 const cors = require('cors');
+const Sentry = require('@sentry/node')
 
+const config = require('./config')
 const app = express();
+
+Sentry.init({
+    dsn: config.sentryDsn,
+    environment: process.env.ENV_ID,
+    integrations: [
+      // enable HTTP calls tracing
+      new Sentry.Integrations.Http({ tracing: true }),
+      // enable Express.js middleware tracing
+      new Sentry.Integrations.Express({
+        // to trace all requests to the default router
+        app,
+        // alternatively, you can specify the routes you want to trace:
+        // router: someRouter,
+      }),
+    ],
+  
+    // We recommend adjusting this value in production, or using tracesSampler
+    // for finer control
+    tracesSampleRate: 1.0,
+  });
+
 const router = express.Router();
 
 const { privateKey } = require('./config');
@@ -41,6 +64,8 @@ router.use(cors({
 }))
 router.use(cookieParser());
 router.use(json());
+app.use(Sentry.Handlers.requestHandler());
+app.use(Sentry.Handlers.tracingHandler());
 
 router.get('/graphql', (req, res) => {
     res.sendFile(path.join(__dirname + '/playground.html'));
@@ -53,6 +78,8 @@ router.post('/graphql', (req, res, next) => {
 app.all('*', (req, res) => {
     return res.status(404).send('404 - Not found!');
 });
+
+app.use(Sentry.Handlers.errorHandler());
 
 app.listen(6100, "0.0.0.0", () => {
     console.info('Server listening on port: 6100');
