@@ -34,7 +34,7 @@ Sentry.init({
 const router = express.Router();
 
 const { privateKey } = require('./config');
-const requestLoggerPlugin = require('./request-logger');
+// const requestLoggerPlugin = require('./request-logger');
 const CustomSupergraphManager = require('./supergraph');
 const RemoteGraphQLDataSource = require('./remote-data-source');
 
@@ -47,7 +47,7 @@ const apolloServerBase = new ApolloServerBase({
 	gateway,
 	// subscriptions: false,
 	// debug: true,
-	plugins: [requestLoggerPlugin.register],
+	// plugins: [requestLoggerPlugin.register],
 });
 
 apolloServerBase.start();
@@ -90,7 +90,6 @@ async function handleGraphqlRequest (req, res) {
     try {
         const token = req.cookies?.gratheon_session ? req.cookies?.gratheon_session : req.headers['token'];
 
-        console.log('got token', token);
         const decoded = await (new Promise((resolve, reject) => jwt.verify(
             token,
             privateKey,

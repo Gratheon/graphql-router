@@ -1,13 +1,14 @@
 version: '3.9'
 services:
   graphql-router:
-    build: .
-    command:
-      node /app/graphql-router.js
+    # build: .
+    image: local/graphql-router
+    # command:
+    #   node graphql-router.js
     ports:
       - "6100:6100"
-    volumes:
-      - .:/app/
+    # volumes:
+    #   - .:/app/
     restart: always
     environment:
       - DOCKER_TAG=${DOCKER_TAG-latest}

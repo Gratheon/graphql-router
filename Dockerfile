@@ -1,13 +1,11 @@
-FROM node:16-alpine
-
-# setup env for consul to be able to track state of service
-ENV SERVICE_DESC="graphql-router"
-
-USER nobody
+FROM node:18-alpine
 
 # ensure all directories exist
 WORKDIR /app
 
+COPY . /app/
+RUN npm install
+
 EXPOSE 6100
 
-CMD ["node", "graphql-service.js"]
+CMD ["node", "graphql-router.js"]
