@@ -2,11 +2,12 @@ const { ApolloGateway } = require('@apollo/gateway');
 const { ApolloServerBase, runHttpQuery, convertNodeHttpToRequest } = require('apollo-server-core');
 const path = require('path');
 const express = require('express');
-const {json} = require('body-parser');
+const { json } = require('body-parser');
 const cookieParser = require('cookie-parser');
 const jwt = require('jsonwebtoken');
 const cors = require('cors');
 const Sentry = require('@sentry/node')
+const fetch = require("cross-fetch");
 
 const config = require('./config')
 const app = express();
@@ -15,21 +16,21 @@ Sentry.init({
     dsn: config.sentryDsn,
     environment: process.env.ENV_ID,
     integrations: [
-      // enable HTTP calls tracing
-      new Sentry.Integrations.Http({ tracing: true }),
-      // enable Express.js middleware tracing
-      new Sentry.Integrations.Express({
-        // to trace all requests to the default router
-        app,
-        // alternatively, you can specify the routes you want to trace:
-        // router: someRouter,
-      }),
+        // enable HTTP calls tracing
+        new Sentry.Integrations.Http({ tracing: true }),
+        // enable Express.js middleware tracing
+        new Sentry.Integrations.Express({
+            // to trace all requests to the default router
+            app,
+            // alternatively, you can specify the routes you want to trace:
+            // router: someRouter,
+        }),
     ],
-  
+
     // We recommend adjusting this value in production, or using tracesSampler
     // for finer control
     tracesSampleRate: 1.0,
-  });
+});
 
 const router = express.Router();
 
@@ -39,15 +40,15 @@ const CustomSupergraphManager = require('./supergraph');
 const RemoteGraphQLDataSource = require('./remote-data-source');
 
 const gateway = new ApolloGateway({
-	buildService: (service) => new RemoteGraphQLDataSource(this, service),
-	supergraphSdl: new CustomSupergraphManager({ pollIntervalInMs: 30000 }),
+    buildService: (service) => new RemoteGraphQLDataSource(this, service),
+    supergraphSdl: new CustomSupergraphManager({ pollIntervalInMs: 30000 }),
 });
 
 const apolloServerBase = new ApolloServerBase({
-	gateway,
-	// subscriptions: false,
-	// debug: true,
-	// plugins: [requestLoggerPlugin.register],
+    gateway,
+    // subscriptions: false,
+    // debug: true,
+    // plugins: [requestLoggerPlugin.register],
 });
 
 apolloServerBase.start();
@@ -85,25 +86,62 @@ app.listen(6100, "0.0.0.0", () => {
     console.info('Server listening on port: 6100');
 });
 
-async function handleGraphqlRequest (req, res) {
+async function handleGraphqlRequest(req, res) {
     let userId;
     try {
-        const token = req.cookies?.gratheon_session ? req.cookies?.gratheon_session : req.headers['token'];
+        const bearer = req.headers['authorization'];
 
-        const decoded = await (new Promise((resolve, reject) => jwt.verify(
-            token,
-            privateKey,
-            function (err, decoded) {
-                if (err) {
-                    reject(err);
-                }
-                resolve(decoded);
-            })));
+        if (bearer) {
+            const bearerToken = bearer.split(' ')[1]
 
-        console.log('decoded token', decoded);
+            // Define the GraphQL endpoint URL
+            const endpoint = `${config.userCycleUrl}/graphql`;
 
-        userId = decoded?.user_id;
-    } catch(e){
+            // Make a POST request with the fetch API
+            const bearerTokenValidationResult = await fetch(endpoint, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    // You may need to include other headers like authorization if required
+                },
+                body: JSON.stringify({
+                    query: `
+                    mutation ValidateApiToken($token: String) {
+                      validateApiToken(token: $token) {
+                        ... on TokenUser{
+                            id
+                        }
+                      }
+                    }
+                  `,
+                    variables: {
+                        token: bearerToken
+                    },
+                }),
+            })
+
+            const bearerTokenValidationResultJSON = await bearerTokenValidationResult.json()
+
+            userId = bearerTokenValidationResultJSON?.data?.validateApiToken?.id
+        }
+        else {
+            const token = req.cookies?.gratheon_session ? req.cookies?.gratheon_session : req.headers['token'];
+
+            const decoded = await (new Promise((resolve, reject) => jwt.verify(
+                token,
+                privateKey,
+                function (err, decoded) {
+                    if (err) {
+                        reject(err);
+                    }
+                    resolve(decoded);
+                })));
+
+            console.log('decoded token', decoded);
+
+            userId = decoded?.user_id;
+        }
+    } catch (e) {
         console.log(e);
     }
 
@@ -119,7 +157,7 @@ async function handleGraphqlRequest (req, res) {
 
     console.log('passing user context', userId);
     try {
-        const {graphqlResponse, responseInit} = await runHttpQuery([req, res], {
+        const { graphqlResponse, responseInit } = await runHttpQuery([req, res], {
             method: req.method,
             query: req.body,
             options,

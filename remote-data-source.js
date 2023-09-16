@@ -13,13 +13,16 @@ class RemoteGraphQLDataSource {
 		// use service discovery (etcd, consul) to dynamically update addresses of services
 		const url = `${this.url.replace('dynamic://','http://')}/graphql`;
 
-		// console.log('context', JSON.stringify(context));
-
 		const headers = (request.http && request.http.headers) || new Headers();
+
+
 		headers.set('Content-Type', 'application/json');
 		headers.set('internal-router-signature', "a239vmwoeifworg");
-		headers.set('internal-userId', context?.userId);
-		// console.log('headers>',headers)
+
+		if(context?.userId){
+			headers.set('internal-userId', context?.userId);
+		}
+		
 		request.http = {
 			method: 'POST',
 			url,
