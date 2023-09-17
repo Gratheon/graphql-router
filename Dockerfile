@@ -4,6 +4,7 @@ FROM node:18-alpine
 WORKDIR /app
 
 COPY . /app/
+RUN npm install -g npm@10.1.0
 RUN npm install
 
 EXPOSE 6100
