@@ -1,6 +1,6 @@
-cd /www/graphql.gratheon.com/
+cd /www/graphql-router/
 
-sudo -H -u www bash -c 'cd /www/graphql.gratheon.com/ && npm i' 
+sudo -H -u www bash -c 'cd /www/graphql-router/ && npm i' 
 
 docker-compose down
 COMPOSE_PROJECT_NAME=gratheon docker-compose up --build -d
