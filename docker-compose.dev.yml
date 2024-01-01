@@ -1,14 +1,14 @@
-version: '3.9'
+version: "3.9"
 services:
   graphql-router:
-    # build: .
-    image: local/graphql-router
-    # command:
-    #   node graphql-router.js
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    command: node graphql-router.js
     ports:
       - "6100:6100"
-    # volumes:
-    #   - .:/app/
+    volumes:
+      - .:/app/
     restart: always
     environment:
       - DOCKER_TAG=${DOCKER_TAG-latest}
@@ -18,3 +18,4 @@ services:
       - gratheon
 networks:
   gratheon:
+

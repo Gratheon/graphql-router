@@ -6,8 +6,8 @@ services:
       node /app/graphql-router.js
     ports:
       - "6100:6100"
-    volumes:
-      - .:/app/
+    # volumes:
+    #   - .:/app/
     restart: always
     environment:
       - DOCKER_TAG=${DOCKER_TAG-latest}

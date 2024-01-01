@@ -68,6 +68,14 @@ router.use(json());
 app.use(Sentry.Handlers.requestHandler());
 app.use(Sentry.Handlers.tracingHandler());
 
+// Add this block to generate and return the GraphQL schema in SDL format
+router.get('/schema.graphql', (req, res) => {
+    const schema = apolloServerBase.schema;
+    const schemaSDL = printSchema(schema);
+    res.set('Content-Type', 'text/plain');
+    res.send(schemaSDL);
+  });
+
 router.get('/graphql', (req, res) => {
     res.sendFile(path.join(__dirname + '/playground.html'));
 });

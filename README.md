@@ -1,7 +1,6 @@
-## Development
-```
-npm run dev
-```
+# gratheon/graphql-router
+
+Routes graphql traffic to federated services depending on graphql schema, polled from graphql-schema-registry
 
 
 ## Architecture
@@ -21,4 +20,9 @@ flowchart LR
     graphql-router --> plantnet("<a href='https://github.com/Gratheon/plantnet'>plantnet</a>\n:8090") --> mysql
     graphql-router --> graphql-schema-registry("graphql-schema-registry\n:6001")
     graphql-router --> weather("<a href='https://github.com/Gratheon/weather'>weather</a>\n:8070")
+```
+
+## Development
+```
+make start
 ```
