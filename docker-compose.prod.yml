@@ -1,7 +1,9 @@
 version: '3.8'
 services:
   graphql-router:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
     command:
       node /app/graphql-router.js
     ports:
