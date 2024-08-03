@@ -56,7 +56,10 @@ apolloServerBase.start();
 app.use(router);
 router.use(cors({
     // origin: /(.)*.gratheon\.com$/,
-    origin: /(.)*/,
+    // origin: /(.)*/,
+    // allow origin from gratheon.com or from localhost
+    origin: /(.)*\.gratheon\.com|localhost|0\.0\.0\.0:8080$/,
+
     "methods": "GET,HEAD,PUT,PATCH,POST,DELETE",
     "preflightContinue": false,
     credentials: true,
