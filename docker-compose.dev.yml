@@ -1,4 +1,4 @@
-version: "3.9"
+#version: "3.9"
 services:
   graphql-router:
     build:
@@ -13,9 +13,9 @@ services:
     environment:
       - DOCKER_TAG=${DOCKER_TAG-latest}
       - ENV_ID=dev
-    network_mode: bridge
-    networks:
-      - gratheon
-networks:
-  gratheon:
+#    network_mode: bridge
+#    networks:
+#      - gratheon
+#networks:
+#  gratheon:
 
