@@ -1,5 +1,5 @@
 .idea
 node_modules
 .dccache
-config/index.js
+./config/config.prod.js
 playground.html
