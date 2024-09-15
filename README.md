@@ -1,11 +1,14 @@
 # gratheon/graphql-router
+
 Routes graphql traffic to federated services depending on graphql schema, polled from graphql-schema-registry
 
-
 ## Authentication
+
 ### Accessing with API tokens
+
 - Generate API token in https://app.gratheon.com/account
 - Pass API token in authorization headers:
+
 ```
 curl --location 'http://0.0.0.0:6100/graphql' \
 --header 'Content-Type: application/json' \
@@ -14,10 +17,10 @@ curl --location 'http://0.0.0.0:6100/graphql' \
 ```
 
 ## Development
-```
-npm run dev
-```
 
+```
+just start
+```
 
 ## Architecture
 
@@ -38,7 +41,3 @@ flowchart LR
     graphql-router --> weather("<a href='https://github.com/Gratheon/weather'>weather</a>\n:8070")
 ```
 
-## Development
-```
-make start
-```
