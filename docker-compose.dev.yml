@@ -4,7 +4,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.dev
-    command: node graphql-router.js
+    command: ./node_modules/.bin/nodemon graphql-router.js
     ports:
       - "6100:6100"
     volumes:
