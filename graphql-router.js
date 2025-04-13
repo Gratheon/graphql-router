@@ -58,8 +58,8 @@ app.use(router);
 router.use(cors({
     // origin: /(.)*.gratheon\.com$/,
     // origin: /(.)*/,
-    // allow origin from gratheon.com or from localhost
-    origin: /(.)*\.gratheon\.com|localhost|0\.0\.0\.0:8080$/,
+    // allow origin from gratheon.com, localhost (any scheme/port), or tauri://localhost
+    origin: /(.)*\.gratheon\.com|localhost|0\.0\.0\.0:8080|tauri:\/\/localhost$/,
 
     "methods": "GET,HEAD,PUT,PATCH,POST,DELETE",
     "preflightContinue": false,
