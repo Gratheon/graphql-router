@@ -9,7 +9,7 @@ import fetch from 'cross-fetch';
 import { visit, DocumentNode, OperationDefinitionNode, FieldNode, printSchema, GraphQLError } from 'graphql';
 
 import { logger } from './logger';
-import config from './config';
+import config, {get} from './config';
 import CustomSupergraphManager from './supergraph';
 import RemoteGraphQLDataSource from './remote-data-source';
 
@@ -27,7 +27,6 @@ const app = express();
 // });
 
 const router: Router = express.Router();
-const { privateKey } = config;
 
 // Helper function to safely extract HTTP status code from various error types
 function getStatusCodeFromError(error: any): number {
@@ -96,7 +95,7 @@ const contextFunction = async ({ req }: { req: Request }): Promise<MyContext> =>
             const token = cookieToken || headerToken;
             if (token) {
                 try {
-                     const decoded = jwt.verify(token, privateKey) as { user_id?: string };
+                     const decoded = jwt.verify(token, get('privateKey')) as { user_id?: string };
                      if (decoded?.user_id) { contextData = { userId: decoded.user_id }; }
                      else { throw new GraphQLError('Invalid authentication token.', { extensions: { code: 'UNAUTHENTICATED', http: { status: 401 } } }); }
                 } catch (err) { throw new GraphQLError('Authentication token is invalid or expired.', { extensions: { code: 'UNAUTHENTICATED', http: { status: 401 } } }); }

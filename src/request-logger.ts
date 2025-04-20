@@ -1,7 +1,7 @@
 import { Kafka, Producer, KafkaConfig, Message } from 'kafkajs';
 import { ApolloServerPlugin, GraphQLRequestListener } from 'apollo-server-plugin-base';
 import { GraphQLRequestContext } from 'apollo-server-types';
-import config from './config';
+import config, { get } from './config';
 import { MyContext } from './graphql-router'; // Import context type if needed
 
 // Define the structure of the event payload sent to Kafka
@@ -27,7 +27,7 @@ const requestLogger: RequestLogger = {
 
             const kafkaConfig: KafkaConfig = {
                 clientId: 'graphql-router-service', // More specific client ID
-                brokers: [config.kafkaBrokerUrl],
+                brokers: [get('kafkaBrokerUrl')],
                 // Add any other necessary Kafka configurations (e.g., SSL, SASL)
             };
             const kafka = new Kafka(kafkaConfig);
