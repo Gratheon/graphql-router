@@ -227,7 +227,12 @@ async function startServer() {
         });
 
         app.get('/', (req: Request, res: Response) => {
-            const playgroundPath = path.join(__dirname, '../src/playground.html'); // Assume it stays in src relative to dist
+            let playgroundPath = path.join(__dirname, '../src/playground.html');
+
+            if (process.env.ENV_ID ==='dev'){
+                path.join(__dirname, '../src/playground.dev.html');
+            }
+            
             logger.log(`Serving playground from: ${playgroundPath}`);
             res.sendFile(playgroundPath);
         });
