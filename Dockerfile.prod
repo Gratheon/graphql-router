@@ -20,5 +20,4 @@ COPY src/playground.html ./src/playground.html
 
 EXPOSE 6100
 
-ENV ENV_ID=prod
 CMD ["npm", "start"]

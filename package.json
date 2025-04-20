@@ -6,7 +6,7 @@
   "scripts": {
     "clean": "rm -rf dist",
     "build": "npm run clean && tsc",
-    "start": "ENV_ID=prod node dist/graphql-router.js",
+    "start": "node dist/graphql-router.js",
     "dev": "ENV_ID=dev ts-node-dev --respawn --transpile-only --ignore-watch node_modules src/graphql-router.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
