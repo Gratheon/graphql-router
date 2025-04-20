@@ -2,7 +2,7 @@
 node_modules
 .dccache
 ./src/config/config.prod.ts
-playground.html
+playground.dev.html
 
 # TypeScript build output
 dist/
