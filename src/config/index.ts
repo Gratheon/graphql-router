@@ -12,9 +12,13 @@ function loadConfig<T>(filePath: string): T | undefined {
 const env = process.env.ENV_ID || "default";
 const customConfig = loadConfig<typeof config>(`./config.${env}`);
 
-const currentConfig = { ...customConfig };
+console.log(customConfig)
 
-export function get(key: keyof typeof config): any {
+const currentConfig = { ...config, ...customConfig };
+
+export function get<T extends keyof typeof config>(
+  key: T
+): typeof config[T] {
   return currentConfig[key];
 }
 

@@ -1,5 +1,5 @@
 import request from 'request-promise-native';
-import config from './config';
+import {get} from './config';
 import { ServiceDefinition } from '@apollo/gateway';
 import { parse, DocumentNode } from 'graphql'; // Import parse and DocumentNode
 import { logger } from './logger'; // Import logger
@@ -29,8 +29,10 @@ interface ServiceListResult {
 type ServiceSdlCache = Map<string, string>;
 
 export async function getServiceListWithTypeDefs(serviceSdlCache: ServiceSdlCache): Promise<ServiceListResult> {
-    const baseUrl = config.schemaRegistryUrl;
+    const baseUrl = get('schemaRegistryUrl');
     let schemaChanged = false;
+
+    logger.log(`Fetching schemas from registry at ${baseUrl}`);
 
     try {
         // Explicitly type the expected response structure
