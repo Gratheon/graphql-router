@@ -6,8 +6,8 @@ services:
       dockerfile: Dockerfile.prod
     ports:
       - "6100:6100"
-    restart: always
     environment:
       - DOCKER_TAG=${DOCKER_TAG-latest}
       - ENV_ID=prod
+    restart: always
     network_mode: host
