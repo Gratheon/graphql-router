@@ -4,18 +4,18 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.dev
-    command: ./node_modules/.bin/nodemon graphql-router.js
+    # Use ts-node-dev for development with TypeScript
+    # --respawn: Restart on crash
+    # --transpile-only: Faster startup, skips type checking (rely on IDE/tsc for that)
+    # --ignore-watch node_modules: Prevent restarts when node_modules change
+    # src/graphql-router.ts: Path to the main entry file
+    command: ./node_modules/.bin/ts-node-dev --respawn --transpile-only --ignore-watch node_modules src/graphql-router.ts
     ports:
       - "6100:6100"
     volumes:
       - .:/app/
     restart: always
+    tty: true
     environment:
       - DOCKER_TAG=${DOCKER_TAG-latest}
       - ENV_ID=dev
-#    network_mode: bridge
-#    networks:
-#      - gratheon
-#networks:
-#  gratheon:
-
