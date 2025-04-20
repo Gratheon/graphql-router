@@ -1,10 +1,12 @@
 FROM node:20-alpine
 
-# ensure all directories exist
 WORKDIR /app
 
-COPY . /app/
+COPY package.json package-lock.json* ./
 RUN npm install -g npm@10.1.0
+
 RUN npm install
+
+COPY . .
 
 EXPOSE 6100

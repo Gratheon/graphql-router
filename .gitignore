@@ -1,5 +1,9 @@
 .idea
 node_modules
 .dccache
-./config/config.prod.js
+./src/config/config.prod.ts
 playground.html
+
+# TypeScript build output
+dist/
+*.tsbuildinfo

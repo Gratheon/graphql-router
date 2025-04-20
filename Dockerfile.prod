@@ -1,12 +1,24 @@
-FROM node:20-alpine
-
-# ensure all directories exist
+FROM node:20-alpine AS base
 WORKDIR /app
-
-COPY . /app/
 RUN npm install -g npm@10.1.0
-RUN npm install
+COPY package.json package-lock.json* ./
+RUN npm ci --omit=dev --ignore-scripts
+
+
+FROM base AS build
+WORKDIR /app
+RUN npm install --ignore-scripts
+COPY . .
+RUN npm run build
+
+FROM base AS production
+WORKDIR /app
+COPY --from=base /app/node_modules ./node_modules
+COPY --from=build /app/dist ./dist
+COPY package.json .
+COPY src/playground.html ./src/playground.html
 
 EXPOSE 6100
 
-CMD ["node", "graphql-router.js"]
+ENV ENV_ID=prod
+CMD ["npm", "start"]
