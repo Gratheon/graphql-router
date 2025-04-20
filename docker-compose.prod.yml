@@ -4,12 +4,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.prod
-    command:
-      node /app/graphql-router.js
     ports:
       - "6100:6100"
-    # volumes:
-    #   - .:/app/
     restart: always
     environment:
       - DOCKER_TAG=${DOCKER_TAG-latest}
