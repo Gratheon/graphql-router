@@ -24,7 +24,7 @@
     "graphql": "16.10.0",
     "jsonwebtoken": "8.5.1",
     "jwt-decode": "3.1.2",
-    "kafkajs": "2.1.0",
+    "kafkajs": "2.2.4",
     "lodash": "4.17.20",
     "request": "2.88.2",
     "request-promise-native": "1.0.9"
