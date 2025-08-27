@@ -184,7 +184,13 @@ async function startServer() {
 
         // Apply Express middleware BEFORE Apollo middleware
         app.use(cors({
-            origin: [ /.*\.gratheon\.com$/, /localhost:\d+$/, /0\.0\.0\.0:\d+$/, /tauri:\/\/localhost/, ],
+            origin: [ 
+                /.*\.gratheon\.com$/,  // for prod to work
+                /localhost:\d+$/,  // for dev to work
+                /0\.0\.0\.0:\d+$/,  // for dev to work
+                /tauri:\/\/localhost/, // for tauri desktop apps to work
+                'https://studio.apollographql.com' // for graphql UI to work too
+            ],
             methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
             preflightContinue: false,
             credentials: true,
