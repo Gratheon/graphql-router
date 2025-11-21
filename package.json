@@ -13,7 +13,7 @@
   "author": "",
   "license": "AGPL",
   "dependencies": {
-    "@apollo/composition": "2.1.3",
+    "@apollo/composition": "2.9.5",
     "@apollo/gateway": "2.1.3",
     "@sentry/node": "7.57.0",
     "apollo-server": "3.10.1",
