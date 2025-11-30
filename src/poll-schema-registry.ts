@@ -105,7 +105,12 @@ export async function getServiceListWithTypeDefs(serviceSdlCache: ServiceSdlCach
 
     } catch (error: any) {
         logger.error("Error fetching schemas from registry:", error instanceof Error ? error.message : String(error));
-        // Return empty list or re-throw error based on desired behavior
+        if (error.statusCode) {
+            logger.error(`Schema registry responded with status code: ${error.statusCode}`);
+        }
+        if (error.code) {
+            logger.error(`Network error code: ${error.code}`);
+        }
         return { services: [], schemaChanged: false };
     }
 }

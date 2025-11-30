@@ -55,9 +55,9 @@ class CustomSupergraphManager {
     private pollIntervalInMs?: number;
     private serviceSdlCache: Map<string, string>;
     private state: ManagerState;
-    // Update the type annotation for the update function
     private update?: (supergraphSdl: string) => void;
     private timerRef: NodeJS.Timeout | null = null;
+    private lastValidSupergraphSdl: string | null = null;
 
     constructor(options?: CustomSupergraphManagerOptions) {
         this.pollIntervalInMs = options?.pollIntervalInMs;
@@ -91,23 +91,29 @@ class CustomSupergraphManager {
         let { services, schemaChanged } = await getServiceListWithTypeDefs(this.serviceSdlCache);
 
         if (!services || services.length === 0) {
-            logger.warn("No services found from registry, using default service.");
+            if (this.lastValidSupergraphSdl) {
+                logger.warn("No services found from registry, keeping last known good schema.");
+                return { supergraphSdl: this.lastValidSupergraphSdl, schemaChanged: false };
+            }
+            logger.warn("No services found from registry and no previous schema available, using default service.");
             services = [defaultService];
-            schemaChanged = true; // Assume change if falling back to default
+            schemaChanged = true;
         }
 
-        // Filter out services that might have failed parsing in getServiceListWithTypeDefs
         const validServices = services.filter(s => s.typeDefs);
 
         if (validServices.length === 0) {
-             logger.error("No valid services with parsable typeDefs found. Cannot compose supergraph.");
-             // Return previous SDL or throw error? For now, return empty SDL and signal no change (or error state)
-             // Returning empty might cause gateway issues. Throwing might be better.
-             throw new Error("Cannot build supergraph: No valid service definitions found.");
+            if (this.lastValidSupergraphSdl) {
+                logger.error("No valid services with parsable typeDefs found. Keeping last known good schema.");
+                return { supergraphSdl: this.lastValidSupergraphSdl, schemaChanged: false };
+            }
+            logger.error("No valid services with parsable typeDefs found and no previous schema available. Cannot compose supergraph.");
+            throw new Error("Cannot build supergraph: No valid service definitions found.");
         }
 
-
-        return { supergraphSdl: compose(validServices), schemaChanged };
+        const supergraphSdl = compose(validServices);
+        this.lastValidSupergraphSdl = supergraphSdl;
+        return { supergraphSdl, schemaChanged };
     }
 
     private beginPolling(): void {
@@ -121,7 +127,6 @@ class CustomSupergraphManager {
     }
 
     private poll(): void {
-        // Clear existing timer if any (safety measure)
         if (this.timerRef) {
             clearTimeout(this.timerRef);
         }
@@ -130,7 +135,7 @@ class CustomSupergraphManager {
             if (this.state.phase !== 'polling') {
                 logger.log("Polling stopped, exiting poll loop.");
                 this.timerRef = null;
-                return; // Exit if state changed
+                return;
             }
 
             try {
@@ -140,22 +145,24 @@ class CustomSupergraphManager {
 
                 if (schemaChanged && this.update) {
                     logger.info('Schema changed, updating supergraph...');
-                    this.update(supergraphSdl); // Pass the SDL string directly
+                    this.update(supergraphSdl);
                     logger.info('Supergraph update triggered.');
                 } else {
                     logger.info('No supergraph update needed.');
                 }
             } catch (error: any) {
-                 logger.error("Error during schema polling or supergraph build:", error instanceof Error ? error.message : String(error));
-                 // Decide if polling should continue or stop on error
+                logger.error("Error during schema polling or supergraph build:", error instanceof Error ? error.message : String(error));
+                if (this.lastValidSupergraphSdl) {
+                    logger.info("Continuing with last known good schema.");
+                } else {
+                    logger.error("No fallback schema available.");
+                }
             }
 
-
-            // Schedule next poll only if still in polling state
             if (this.state.phase === 'polling') {
                 this.poll();
             } else {
-                 this.timerRef = null; // Clear ref if stopped during async op
+                this.timerRef = null;
             }
 
         }, this.pollIntervalInMs);
