@@ -55,8 +55,8 @@ class CustomSupergraphManager {
     private pollIntervalInMs?: number;
     private serviceSdlCache: Map<string, string>;
     private state: ManagerState;
+    // Update the type annotation for the update function
     private update?: (supergraphSdl: string) => void;
-    private timerRef: NodeJS.Timeout | null = null;
     private lastValidSupergraphSdl: string | null = null;
 
     constructor(options?: CustomSupergraphManagerOptions) {
@@ -90,12 +90,13 @@ class CustomSupergraphManager {
     private async buildSupergraph(): Promise<BuildSupergraphResult> {
         let { services, schemaChanged } = await getServiceListWithTypeDefs(this.serviceSdlCache);
 
-        if (!services || services.length === 0) {
+        if (services.length === 0) {
+            logger.warn("No services found from registry.");
             if (this.lastValidSupergraphSdl) {
-                logger.warn("No services found from registry, keeping last known good schema.");
+                logger.warn("Keeping last known good schema.");
                 return { supergraphSdl: this.lastValidSupergraphSdl, schemaChanged: false };
             }
-            logger.warn("No services found from registry and no previous schema available, using default service.");
+            logger.warn("No previous schema available, using default service.");
             services = [defaultService];
             schemaChanged = true;
         }
@@ -116,12 +117,12 @@ class CustomSupergraphManager {
         return { supergraphSdl, schemaChanged };
     }
 
+    private timerRef: NodeJS.Timeout | null = null;
+
     private beginPolling(): void {
-        if (this.state.phase !== 'initialized') {
-            logger.warn(`Polling already started or manager is stopped. State: ${this.state.phase}`);
+        if (this.state.phase === 'polling') {
             return;
         }
-        logger.log(`Starting schema polling every ${this.pollIntervalInMs} ms`);
         this.state = State.Polling;
         this.poll();
     }
@@ -146,11 +147,10 @@ class CustomSupergraphManager {
                 if (schemaChanged && this.update) {
                     logger.info('Schema changed, updating supergraph...');
                     this.update(supergraphSdl);
-                    logger.info('Supergraph update triggered.');
                 } else {
                     logger.info('No supergraph update needed.');
                 }
-            } catch (error: any) {
+            } catch (error) {
                 logger.error("Error during schema polling or supergraph build:", error instanceof Error ? error.message : String(error));
                 if (this.lastValidSupergraphSdl) {
                     logger.info("Continuing with last known good schema.");
@@ -164,12 +164,10 @@ class CustomSupergraphManager {
             } else {
                 this.timerRef = null;
             }
-
         }, this.pollIntervalInMs);
     }
 }
 
-// Type the compose function parameter and handle errors more robustly
 function compose(services: ServiceDefinition[]): string {
     logger.log(`Composing supergraph with ${services.length} services: ${services.map(s => s.name).join(', ')}`);
     const composed: CompositionResult = composeServices(services);
@@ -177,7 +175,6 @@ function compose(services: ServiceDefinition[]): string {
     if (composed.errors && composed.errors.length > 0) {
         const errorMessages = composed.errors.map((e: GraphQLError) => `\t${e.message}`).join('\n');
         logger.error('Errors composing the supergraph:\n', errorMessages);
-        // Depending on severity, you might want to throw or return a previous valid SDL
         throw new Error(`Supergraph composition failed:\n${errorMessages}`);
     }
 
