@@ -261,7 +261,10 @@ async function startServer() {
         });
 
     } catch (error) {
-        logger.error('Error starting Apollo Server:', error);
+        logger.error('Error starting Apollo Server:', error instanceof Error ? error.message : String(error));
+        if (error instanceof Error && error.stack) {
+            logger.error('Stack trace:', error.stack);
+        }
         process.exit(1);
     }
 }
