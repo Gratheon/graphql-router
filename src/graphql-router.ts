@@ -184,17 +184,30 @@ async function startServer() {
 
         // Apply Express middleware BEFORE Apollo middleware
         app.use(cors({
-            origin: [ 
-                /.*\.gratheon\.com$/,  // for prod to work
-                /localhost:\d+$/,  // for dev to work
-                /0\.0\.0\.0:\d+$/,  // for dev to work
-                /tauri:\/\/localhost/, // for tauri desktop apps to work
-                'https://studio.apollographql.com' // for graphql UI to work too
-            ],
+            origin: (origin, callback) => {
+                if (!origin) {
+                    callback(null, true);
+                    return;
+                }
+
+                const allowedPatterns = [
+                    /^https?:\/\/localhost(:\d+)?$/,
+                    /^https?:\/\/127\.0\.0\.1(:\d+)?$/,
+                    /^https?:\/\/0\.0\.0\.0(:\d+)?$/,
+                    /^tauri:\/\/localhost$/,
+                    /^https:\/\/([a-z0-9-]+\.)?gratheon\.com$/,
+                    /^https:\/\/studio\.apollographql\.com$/,
+                ];
+
+                const isAllowed = allowedPatterns.some((pattern) =>
+                    pattern.test(origin)
+                );
+
+                callback(null, isAllowed);
+            },
             methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
             preflightContinue: false,
             credentials: true,
-            allowedHeaders: ['Content-Type', 'token', 'X-Share-Token', 'Authorization', 'baggage', 'sentry-trace'],
             optionsSuccessStatus: 204
         }));
         app.use(cookieParser());
