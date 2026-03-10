@@ -1,4 +1,4 @@
-import { Kafka, Producer, KafkaConfig, Message } from 'kafkajs';
+import Redis from 'ioredis';
 import { ApolloServerPlugin, GraphQLRequestListener } from 'apollo-server-plugin-base';
 import { GraphQLRequestContext } from 'apollo-server-types';
 import config, { get } from './config';
@@ -9,43 +9,81 @@ interface KafkaEventPayload {
     query?: string;
     operationName?: string | null;
     persistedQueryHash?: string;
+    timestamp?: number;
     headers?: Record<string, string | string[] | undefined>; // Match IncomingHttpHeaders
 }
 
 // Define the structure for the request logger object
 interface RequestLogger {
-    connectToKafka: () => Promise<void>;
+    connectToRedis: () => Promise<void>;
     register: () => ApolloServerPlugin<MyContext>; // Use MyContext if context is accessed
 }
 
-let producer: Producer | undefined;
+let publisher: Redis | undefined;
+const queriesChannel = process.env.REDIS_QUERIES_CHANNEL || 'graphql-queries';
+
+function serializeHeaders(
+    headers: unknown
+): Record<string, string | string[] | undefined> {
+    const serialized: Record<string, string | string[] | undefined> = {};
+
+    if (!headers) {
+        return serialized;
+    }
+
+    // Apollo HeaderMap / Fetch Headers style
+    if (typeof (headers as any).forEach === 'function') {
+        (headers as any).forEach((value: unknown, key: string) => {
+            serialized[String(key).toLowerCase()] =
+                Array.isArray(value) ? value.map(String) : String(value);
+        });
+        return serialized;
+    }
+
+    // Generic iterable of [key, value]
+    if (typeof (headers as any)[Symbol.iterator] === 'function') {
+        for (const entry of headers as Iterable<unknown>) {
+            if (Array.isArray(entry) && entry.length >= 2) {
+                const [key, value] = entry as [unknown, unknown];
+                serialized[String(key).toLowerCase()] =
+                    Array.isArray(value) ? value.map(String) : String(value);
+            }
+        }
+        return serialized;
+    }
+
+    // Plain object fallback
+    for (const [key, value] of Object.entries(headers as Record<string, unknown>)) {
+        serialized[key.toLowerCase()] = Array.isArray(value)
+            ? value.map(String)
+            : (value as string | undefined);
+    }
+
+    return serialized;
+}
 
 const requestLogger: RequestLogger = {
-    connectToKafka: async (): Promise<void> => {
+    connectToRedis: async (): Promise<void> => {
         try {
-            console.info('Connecting to kafka broker:', config.kafkaBrokerUrl);
+            if (publisher && (publisher.status === 'ready' || publisher.status === 'connecting')) {
+                return;
+            }
 
-            const kafkaConfig: KafkaConfig = {
-                clientId: 'graphql-router-service', // More specific client ID
-                brokers: [get('kafkaBrokerUrl')],
-                // Add any other necessary Kafka configurations (e.g., SSL, SASL)
-            };
-            const kafka = new Kafka(kafkaConfig);
-
-            producer = kafka.producer({
-                // Add producer configurations if needed (e.g., idempotent, retries)
+            console.info('Connecting to redis:', config.redisHost, config.redisPort);
+            publisher = new Redis({
+                host: get('redisHost'),
+                port: get('redisPort'),
+                password: get('redisSecret') || undefined,
+                lazyConnect: true,
+                maxRetriesPerRequest: 1,
             });
-
-            // Handle producer events for better resilience
-            producer.on('producer.connect', () => console.log('Kafka Producer connected'));
-            producer.on('producer.disconnect', (event) => console.error('Kafka Producer disconnected', event));
-            // Consider adding 'producer.network.request_timeout' or other error handlers
-
-            await producer.connect();
+            publisher.on('error', (error) => {
+                console.error('Redis publisher error:', error instanceof Error ? error.message : String(error));
+            });
+            await publisher.connect();
         } catch (e: any) {
-            console.error('Failed to connect Kafka producer:', e instanceof Error ? e.message : String(e));
-            // Reset producer on failure to allow retry on next request
-            producer = undefined;
+            console.error('Failed to connect Redis publisher:', e instanceof Error ? e.message : String(e));
+            publisher = undefined;
         }
     },
 
@@ -55,18 +93,17 @@ const requestLogger: RequestLogger = {
             requestContext: GraphQLRequestContext<MyContext>
         ): Promise<GraphQLRequestListener<MyContext> | void> { // Return type can be void or listener
 
-            // Ensure producer is connected, attempt connection if not
-            if (!producer) {
-                console.warn('Kafka producer not connected, attempting to connect...');
-                await requestLogger.connectToKafka();
-                if (!producer) {
-                    console.error('Kafka producer connection failed, cannot log query for this request.');
+            // Ensure publisher is connected, attempt connection if not
+            if (!publisher) {
+                console.warn('Redis publisher not connected, attempting to connect...');
+                await requestLogger.connectToRedis();
+                if (!publisher) {
+                    console.error('Redis publisher connection failed, cannot log query for this request.');
                     return; // Stop processing if connection fails
                 }
             }
 
-            // Use a specific producer instance for this request to avoid race conditions if connectToKafka runs concurrently
-            const currentProducer = producer;
+            const currentPublisher = publisher;
 
             // Return listener hooks if needed, e.g., willSendResponse
             // For just logging the start, we can do it directly here.
@@ -76,49 +113,37 @@ const requestLogger: RequestLogger = {
                     query: requestContext.request.query,
                     operationName: requestContext.request.operationName,
                     persistedQueryHash: requestContext.request.extensions?.persistedQuery?.sha256Hash, // Access specific hash if available
+                    timestamp: Date.now(),
                 };
 
                 // Safely access headers
                 if (requestContext.request.http?.headers) {
-                    // Last attempt: Treat as a plain object and iterate keys (less safe)
-                    eventPayload.headers = {};
-                    const headerObj = requestContext.request.http.headers;
-                    try {
-                        // Check if it's iterable or has keys we can access
-                        if (typeof headerObj === 'object' && headerObj !== null) {
-                             for (const key in headerObj) {
-                                 // Ensure we are accessing own properties if necessary, though Headers objects usually don't have inherited properties
-                                 if (Object.prototype.hasOwnProperty.call(headerObj, key)) {
-                                     // Accessing potentially non-standard properties
-                                     eventPayload.headers[key] = (headerObj as any)[key];
-                                 }
-                             }
-                        } else {
-                             console.warn("Headers object is not an object or is null.");
-                        }
-                    } catch (e) {
-                         console.warn("Failed to iterate over headers object keys.", e);
-                         eventPayload.headers = undefined; // Fallback on error
+                    eventPayload.headers = serializeHeaders(
+                        requestContext.request.http.headers
+                    );
+
+                    // Normalize common custom header names into Apollo's expected names.
+                    if (
+                        !eventPayload.headers['apollographql-client-name'] &&
+                        eventPayload.headers['x-client-name']
+                    ) {
+                        eventPayload.headers['apollographql-client-name'] =
+                            eventPayload.headers['x-client-name'];
+                    }
+                    if (
+                        !eventPayload.headers['apollographql-client-version'] &&
+                        eventPayload.headers['x-client-version']
+                    ) {
+                        eventPayload.headers['apollographql-client-version'] =
+                            eventPayload.headers['x-client-version'];
                     }
                 }
 
-                console.log('Sending message to kafka:', eventPayload);
+                console.log('Publishing query event to redis:', eventPayload);
 
-                const message: Message = {
-                    // key: // Optional: Add a key for partitioning (e.g., user ID, operation name)
-                    value: JSON.stringify(eventPayload),
-                    // headers: {} // Add Kafka message headers if needed
-                };
-
-                await currentProducer.send({
-                    topic: 'graphql-queries', // Consider making topic configurable
-                    messages: [message],
-                    // acks: // Configure acknowledgements (e.g., 1, -1)
-                    // timeout: // Configure request timeout
-                });
+                await currentPublisher.publish(queriesChannel, JSON.stringify(eventPayload));
             } catch (e: any) {
-                console.error('Failed to send message to Kafka:', e instanceof Error ? e.message : String(e));
-                // Optional: Handle specific Kafka errors (e.g., disconnect, retries)
+                console.error('Failed to publish query event to Redis:', e instanceof Error ? e.message : String(e));
             }
 
             // No need to return a listener if only logging at the start
