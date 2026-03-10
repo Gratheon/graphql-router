@@ -12,6 +12,7 @@ import { logger } from './logger';
 import config, {get} from './config';
 import CustomSupergraphManager from './supergraph';
 import RemoteGraphQLDataSource from './remote-data-source';
+import requestLogger from './request-logger';
 
 const app = express();
 
@@ -158,8 +159,7 @@ const server = new ApolloServer({
     // Use type assertion 'as any' to bypass complex GatewayInterface type mismatch
     gateway: gateway as any, // Assert gateway type
     context: contextFunction,
-    // Add plugins if needed
-    // plugins: [],
+    plugins: [requestLogger.register()],
     formatError: (error: GraphQLError) => {
         logger.error("GraphQL Error Formatter:", JSON.stringify(error, null, 2));
         // Check if it's an authentication error we added to the context

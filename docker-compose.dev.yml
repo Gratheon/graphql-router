@@ -19,3 +19,6 @@ services:
     environment:
       - DOCKER_TAG=${DOCKER_TAG-latest}
       - ENV_ID=dev
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_SECRET=pass
