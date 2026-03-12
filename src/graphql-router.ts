@@ -48,6 +48,7 @@ function getStatusCodeFromError(error: any): number {
 // Define Context Type and Export it
 export interface MyContext {
     userId?: string;
+    billingPlan?: string;
     shareScopes?: Scopes;
     authError?: GraphQLError;
 }
@@ -114,6 +115,45 @@ const contextFunction = async ({ req }: { req: Request }): Promise<MyContext> =>
         // Add authError to context instead of throwing immediately
         contextData.authError = (e instanceof GraphQLError) ? e : new GraphQLError('Authentication error.', { originalError: e });
     }
+
+    // Resolve billing plan for downstream feature-gating (e.g. AI Advisor).
+    if (!contextData.authError && contextData.userId) {
+        try {
+            const billingResponse = await fetch(userCycleEndpoint, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "internal-userid": contextData.userId,
+                },
+                body: JSON.stringify({
+                    query: `query CurrentUserBillingPlan { user { ... on User { billingPlan } ... on Error { code } } }`
+                })
+            });
+
+            if (billingResponse.ok) {
+                const billingResult = await billingResponse.json() as {
+                    data?: {
+                        user?: { billingPlan?: string } | { code?: string }
+                    }
+                };
+                const plan = (billingResult?.data?.user as { billingPlan?: string })?.billingPlan;
+                if (plan) {
+                    contextData.billingPlan = plan;
+                }
+            } else {
+                logger.warn('[AUTH_DEBUG] Failed to resolve billing plan from user-cycle', {
+                    status: billingResponse.status,
+                    userId: contextData.userId
+                });
+            }
+        } catch (billingError: any) {
+            logger.warn('[AUTH_DEBUG] Billing plan lookup failed', {
+                userId: contextData.userId,
+                error: billingError?.message || String(billingError),
+            });
+        }
+    }
+
     logger.log('[AUTH_DEBUG] Context Data:', contextData);
     return contextData;
 };

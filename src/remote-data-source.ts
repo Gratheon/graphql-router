@@ -49,6 +49,11 @@ export default class RemoteGraphQLDataSource {
              logger.log('[REMOTE_DATASOURCE] No userId found in effective context.');
         }
 
+        if (effectiveContext?.billingPlan) {
+            headers.set('internal-billing-plan', effectiveContext.billingPlan);
+            logger.log('[REMOTE_DATASOURCE] Forwarding internal-billing-plan header:', effectiveContext.billingPlan);
+        }
+
         // ShareScopes forwarding (removed for brevity in example, add back if needed)
         // ...
 
