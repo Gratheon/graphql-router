@@ -13,5 +13,8 @@ services:
       - OTEL_SERVICE_NAME=graphql-router
       - OTEL_RESOURCE_ATTRIBUTES=deployment.environment.name=prod,service.namespace=gratheon
       - HYPERDX_API_KEY=${HYPERDX_API_KEY:-}
+      - REDIS_HOST=${REDIS_HOST:-127.0.0.1}
+      - REDIS_PORT=${REDIS_PORT:-6379}
+      - REDIS_SECRET=${REDIS_SECRET:-pass}
     restart: always
     network_mode: host

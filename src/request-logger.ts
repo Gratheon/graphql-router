@@ -21,6 +21,8 @@ interface RequestLogger {
 
 let publisher: Redis | undefined;
 const queriesChannel = process.env.REDIS_QUERIES_CHANNEL || 'graphql-queries';
+let nextConnectAttemptAt = 0;
+const reconnectBackoffMs = 30_000;
 
 function serializeHeaders(
     headers: unknown
@@ -69,6 +71,10 @@ const requestLogger: RequestLogger = {
                 return;
             }
 
+            if (Date.now() < nextConnectAttemptAt) {
+                return;
+            }
+
             console.info('Connecting to redis:', config.redisHost, config.redisPort);
             publisher = new Redis({
                 host: get('redisHost'),
@@ -76,13 +82,18 @@ const requestLogger: RequestLogger = {
                 password: get('redisSecret') || undefined,
                 lazyConnect: true,
                 maxRetriesPerRequest: 1,
+                enableOfflineQueue: false,
+                retryStrategy: () => undefined,
             });
             publisher.on('error', (error) => {
                 console.error('Redis publisher error:', error instanceof Error ? error.message : String(error));
             });
             await publisher.connect();
+            nextConnectAttemptAt = 0;
         } catch (e: any) {
             console.error('Failed to connect Redis publisher:', e instanceof Error ? e.message : String(e));
+            nextConnectAttemptAt = Date.now() + reconnectBackoffMs;
+            publisher?.disconnect();
             publisher = undefined;
         }
     },
@@ -94,11 +105,14 @@ const requestLogger: RequestLogger = {
         ): Promise<GraphQLRequestListener<MyContext> | void> { // Return type can be void or listener
 
             // Ensure publisher is connected, attempt connection if not
-            if (!publisher) {
-                console.warn('Redis publisher not connected, attempting to connect...');
+            if (!publisher || publisher.status !== 'ready') {
+                const shouldAttemptConnect = Date.now() >= nextConnectAttemptAt;
+                if (shouldAttemptConnect) {
+                    console.warn('Redis publisher not connected, attempting to connect...');
+                }
                 await requestLogger.connectToRedis();
-                if (!publisher) {
-                    console.error('Redis publisher connection failed, cannot log query for this request.');
+
+                if (!publisher || publisher.status !== 'ready') {
                     return; // Stop processing if connection fails
                 }
             }
