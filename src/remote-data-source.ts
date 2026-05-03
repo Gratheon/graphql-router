@@ -1,6 +1,7 @@
 import { fetch, Request as ApolloRequest, Headers } from 'apollo-server-env';
 import { GraphQLRequest, GraphQLResponse } from 'apollo-server-types';
 import { ServiceEndpointDefinition } from '@apollo/gateway';
+import { injectTraceHeaders } from '@gratheon/log-lib';
 import { MyContext } from './graphql-router'; // Import context type
 import {logger} from './logger'; // Import logger
 
@@ -60,6 +61,7 @@ export default class RemoteGraphQLDataSource {
         if (!userIdForwarded /* && !scopesForwarded */) {
             logger.log('[REMOTE_DATASOURCE] No userId or shareScopes in effective context to forward.');
         }
+        injectTraceHeaders(headers);
 
         const { http, ...graphqlRequest } = request;
         const body = JSON.stringify(graphqlRequest);

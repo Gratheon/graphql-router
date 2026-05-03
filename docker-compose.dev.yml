@@ -19,6 +19,10 @@ services:
     environment:
       - DOCKER_TAG=${DOCKER_TAG-latest}
       - ENV_ID=dev
+      - OTEL_EXPORTER_OTLP_ENDPOINT=${OTEL_EXPORTER_OTLP_ENDPOINT:-http://host.docker.internal:4318}
+      - OTEL_SERVICE_NAME=graphql-router
+      - OTEL_RESOURCE_ATTRIBUTES=deployment.environment.name=dev,service.namespace=gratheon
+      - HYPERDX_API_KEY=${HYPERDX_API_KEY:-local-gratheon-clickstack}
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - REDIS_SECRET=pass
