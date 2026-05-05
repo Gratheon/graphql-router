@@ -1,7 +1,7 @@
 import { fetch, Request as ApolloRequest, Headers } from 'apollo-server-env';
 import { GraphQLRequest, GraphQLResponse } from 'apollo-server-types';
 import { ServiceEndpointDefinition } from '@apollo/gateway';
-import { injectTraceHeaders } from '@gratheon/log-lib';
+import { traceHttpClient } from '@gratheon/log-lib';
 import { MyContext } from './graphql-router'; // Import context type
 import {logger} from './logger'; // Import logger
 
@@ -61,16 +61,8 @@ export default class RemoteGraphQLDataSource {
         if (!userIdForwarded /* && !scopesForwarded */) {
             logger.log('[REMOTE_DATASOURCE] No userId or shareScopes in effective context to forward.');
         }
-        injectTraceHeaders(headers);
-
         const { http, ...graphqlRequest } = request;
         const body = JSON.stringify(graphqlRequest);
-
-        const httpRequest = new ApolloRequest(targetUrl, {
-            method: 'POST',
-            headers,
-            body,
-        });
 
         logger.log(`[REMOTE_DATASOURCE] Sending request to ${targetUrl} for service ${this.name}. Headers will include signature and potentially internal-userId.`);
         // Logging actual headers might still be problematic, log specific ones if needed:
@@ -78,7 +70,19 @@ export default class RemoteGraphQLDataSource {
 
 
         try {
-            const httpResponse = await fetch(httpRequest);
+            const httpResponse = await traceHttpClient({
+                method: 'POST',
+                url: targetUrl,
+                name: `POST ${this.name ?? targetUrl}`,
+                headers,
+            }, async () => {
+                const httpRequest = new ApolloRequest(targetUrl, {
+                    method: 'POST',
+                    headers,
+                    body,
+                });
+                return fetch(httpRequest);
+            });
 
             if (!httpResponse.ok) {
                  let errorBody = '';

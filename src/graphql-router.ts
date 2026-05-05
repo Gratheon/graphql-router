@@ -7,7 +7,7 @@ import jwt from 'jsonwebtoken';
 import cors from 'cors';
 import fetch from 'cross-fetch';
 import { visit, DocumentNode, OperationDefinitionNode, FieldNode, printSchema, GraphQLError } from 'graphql';
-import { traceExpressMiddleware, traceHeaders } from '@gratheon/log-lib';
+import { traceExpressMiddleware, traceHttpClient } from '@gratheon/log-lib';
 
 import { logger } from './logger';
 import config, {get} from './config';
@@ -73,6 +73,15 @@ interface ErrorResponse { __typename: 'Error'; code: string; }
 type ValidateApiTokenResponse = TokenUser | ErrorResponse;
 type ValidateShareTokenResponse = ShareTokenDetails | ErrorResponse;
 
+function postUserCycleGraphql(userCycleEndpoint: string, body: string, headers: Record<string, string> = { "Content-Type": "application/json" }) {
+    return traceHttpClient({
+        method: "POST",
+        url: userCycleEndpoint,
+        name: "POST user-cycle",
+        headers,
+    }, () => fetch(userCycleEndpoint, { method: "POST", headers, body }));
+}
+
 // Define context function - This will be passed to ApolloServer constructor
 const contextFunction = async ({ req }: { req: Request }): Promise<MyContext> => {
     let contextData: MyContext = {};
@@ -90,7 +99,7 @@ const contextFunction = async ({ req }: { req: Request }): Promise<MyContext> =>
 
         if (bearer) {
             const bearerToken = bearer.split(' ')[1];
-            const response = await fetch(userCycleEndpoint, { method: "POST", headers: traceHeaders({ "Content-Type": "application/json" }), body: JSON.stringify({ query: `mutation ValidateApiToken($token: String) { validateApiToken(token: $token) { ... on TokenUser { id } ... on Error { code } } }`, variables: { token: bearerToken } }) });
+            const response = await postUserCycleGraphql(userCycleEndpoint, JSON.stringify({ query: `mutation ValidateApiToken($token: String) { validateApiToken(token: $token) { ... on TokenUser { id } ... on Error { code } } }`, variables: { token: bearerToken } }));
             const result = await response.json() as { data?: { validateApiToken?: ValidateApiTokenResponse } };
             const validationData = result?.data?.validateApiToken;
             if (validationData?.__typename === 'TokenUser') { contextData = { userId: validationData.id }; }
@@ -105,7 +114,7 @@ const contextFunction = async ({ req }: { req: Request }): Promise<MyContext> =>
                 } catch (err) { throw new GraphQLError('Authentication token is invalid or expired.', { extensions: { code: 'UNAUTHENTICATED', http: { status: 401 } } }); }
             }
         } else if (shareToken) {
-            const response = await fetch(userCycleEndpoint, { method: "POST", headers: traceHeaders({ "Content-Type": "application/json" }), body: JSON.stringify({ query: `query ValidateShareToken($token: String!) { validateShareToken(token: $token) { ... on ShareTokenDetails { __typename id name scopes userId } ... on Error { __typename code } } }`, variables: { token: shareToken } }) });
+            const response = await postUserCycleGraphql(userCycleEndpoint, JSON.stringify({ query: `query ValidateShareToken($token: String!) { validateShareToken(token: $token) { ... on ShareTokenDetails { __typename id name scopes userId } ... on Error { __typename code } } }`, variables: { token: shareToken } }));
             if (!response.ok) throw new GraphQLError('Failed to validate share token.', { extensions: { code: 'INTERNAL_SERVER_ERROR', http: { status: 500 } } });
             const result = await response.json() as { data?: { validateShareToken?: ValidateShareTokenResponse } };
             const validationData = result?.data?.validateShareToken;
@@ -121,16 +130,16 @@ const contextFunction = async ({ req }: { req: Request }): Promise<MyContext> =>
     // Resolve billing plan for downstream feature-gating (e.g. AI Advisor).
     if (!contextData.authError && contextData.userId) {
         try {
-            const billingResponse = await fetch(userCycleEndpoint, {
-                method: "POST",
-                headers: traceHeaders({
+            const billingResponse = await postUserCycleGraphql(
+                userCycleEndpoint,
+                JSON.stringify({
+                    query: `query CurrentUserBillingPlan { user { ... on User { billingPlan } ... on Error { code } } }`
+                }),
+                {
                     "Content-Type": "application/json",
                     "internal-userid": contextData.userId,
-                }),
-                body: JSON.stringify({
-                    query: `query CurrentUserBillingPlan { user { ... on User { billingPlan } ... on Error { code } } }`
-                })
-            });
+                },
+            );
 
             if (billingResponse.ok) {
                 const billingResult = await billingResponse.json() as {
