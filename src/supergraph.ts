@@ -140,15 +140,15 @@ class CustomSupergraphManager {
             }
 
             try {
-                logger.info('Polling schema registry...');
+                logger.debug('Polling schema registry...');
                 const { supergraphSdl, schemaChanged } = await this.buildSupergraph();
-                logger.info('Polling done.');
+                logger.debug('Polling done.');
 
                 if (schemaChanged && this.update) {
                     logger.info('Schema changed, updating supergraph...');
                     this.update(supergraphSdl);
                 } else {
-                    logger.info('No supergraph update needed.');
+                    logger.debug('No supergraph update needed.');
                 }
             } catch (error) {
                 logger.error("Error during schema polling or supergraph build:", error instanceof Error ? error.message : String(error));
@@ -169,7 +169,7 @@ class CustomSupergraphManager {
 }
 
 function compose(services: ServiceDefinition[]): string {
-    logger.log(`Composing supergraph with ${services.length} services: ${services.map(s => s.name).join(', ')}`);
+    logger.debug(`Composing supergraph with ${services.length} services: ${services.map(s => s.name).join(', ')}`);
     const composed: CompositionResult = composeServices(services);
 
     if (composed.errors && composed.errors.length > 0) {
@@ -183,7 +183,7 @@ function compose(services: ServiceDefinition[]): string {
          throw new Error('Supergraph composition failed: No SDL generated.');
     }
 
-    logger.log("Supergraph composition successful.");
+    logger.debug("Supergraph composition successful.");
     return composed.supergraphSdl;
 }
 

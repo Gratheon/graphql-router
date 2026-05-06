@@ -32,7 +32,7 @@ export async function getServiceListWithTypeDefs(serviceSdlCache: ServiceSdlCach
     const baseUrl = get('schemaRegistryUrl');
     let schemaChanged = false;
 
-    logger.log(`Fetching schemas from registry at ${baseUrl}`);
+    logger.debug(`Fetching schemas from registry at ${baseUrl}`);
 
     try {
         // Explicitly type the expected response structure
@@ -61,7 +61,7 @@ export async function getServiceListWithTypeDefs(serviceSdlCache: ServiceSdlCach
                 // Decide how to handle missing URL - throw error, skip service, provide default?
                 // For now, let's keep the structure but the URL will be invalid.
             } else {
-                logger.log(
+                logger.debug(
                     `Got ${schema.name} service schema with version ${schema.version}`
                 );
             }
