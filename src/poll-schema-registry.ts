@@ -1,5 +1,5 @@
-import request from 'request-promise-native';
 import {get} from './config';
+import fetch from 'cross-fetch';
 import { ServiceDefinition } from '@apollo/gateway';
 import { parse, DocumentNode } from 'graphql'; // Import parse and DocumentNode
 import { logger } from './logger'; // Import logger
@@ -35,13 +35,9 @@ export async function getServiceListWithTypeDefs(serviceSdlCache: ServiceSdlCach
     logger.debug(`Fetching schemas from registry at ${baseUrl}`);
 
     try {
-        // Explicitly type the expected response structure
-        const serviceTypeDefinitions: SchemaRegistryResponse = await request({
-            baseUrl,
-            method: 'GET',
-            url: '/schema/latest',
-            json: true,
-        });
+        const response = await fetch(`${baseUrl}/schema/latest`);
+        if (!response.ok) throw new Error(`Schema registry responded with status code: ${response.status}`);
+        const serviceTypeDefinitions: SchemaRegistryResponse = await response.json() as SchemaRegistryResponse;
 
         // Use optional chaining and provide a default empty array
         const rawSchemas = serviceTypeDefinitions?.data ?? [];
