@@ -5,6 +5,7 @@ export default {
 	redisSecret: process.env.REDIS_SECRET || process.env.REDIS_PASSWORD || '',
 	schemaRegistryUrl: 'http://gql-schema-registry:3000',
 	userCycleUrl: 'http://user-cycle:4000',
+	altairEndpointUrl: process.env.ALTAIR_ENDPOINT_URL || 'https://graphql.gratheon.com/graphql',
 
 	// thist must match user-cycle JWT_KEY
 	privateKey: 'okzfERFAXXbRTQWkGFfjo3EcAXjRijnGnaAMEsTXnmdjAVDkQrfyLzscPwUiymbj',

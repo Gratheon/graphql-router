@@ -298,10 +298,22 @@ async function startServer() {
         // Altair ships static assets through this router, so the docs iframe does not
         // depend on Apollo Studio/Sandbox or an external GraphQL UI host.
         app.use('/altair', altairExpress({
-            endpointURL: '/graphql',
+            // WHY: docs embed Altair from gratheon.com; an absolute URL avoids
+            // ambiguity if Altair is opened outside graphql.gratheon.com, while
+            // keeping local/dev endpoints overridable through config/env.
+            endpointURL: config.altairEndpointUrl,
             initialName: 'Gratheon GraphQL API',
+            // Show real schema metadata by default instead of only __typename,
+            // so the public API docs immediately demonstrate introspection.
             initialQuery: `query IntrospectionSmokeTest {
-  __typename
+  __schema {
+    queryType { name }
+    mutationType { name }
+    types {
+      name
+      kind
+    }
+  }
 }`,
             initialSettings: {
                 'request.withCredentials': true,
