@@ -1,6 +1,6 @@
 import { ApolloGateway, ServiceEndpointDefinition } from '@apollo/gateway';
 import { ApolloServer } from 'apollo-server-express';
-import path from 'path';
+import { altairExpress } from 'altair-express-middleware';
 import express, { Request, Response, NextFunction, Router } from 'express';
 import cookieParser from 'cookie-parser';
 import jwt from 'jsonwebtoken';
@@ -294,16 +294,25 @@ async function startServer() {
                 }
             } catch (error) { next(error); }
         });
+        // Serve an on-premise GraphQL IDE instead of Apollo's default landing page.
+        // Altair ships static assets through this router, so the docs iframe does not
+        // depend on Apollo Studio/Sandbox or an external GraphQL UI host.
+        app.use('/altair', altairExpress({
+            endpointURL: '/graphql',
+            initialName: 'Gratheon GraphQL API',
+            initialQuery: `query IntrospectionSmokeTest {
+  __typename
+}`,
+            initialSettings: {
+                'request.withCredentials': true,
+                'schema.reloadOnStart': true,
+                'alert.disableWarnings': true,
+                'alert.disableUpdateNotification': true,
+            },
+        }));
 
         app.get('/', (req: Request, res: Response) => {
-            let playgroundPath = path.join(__dirname, '../src/playground.html');
-
-            if (process.env.ENV_ID ==='dev'){
-                path.join(__dirname, '../src/playground.dev.html');
-            }
-            
-            logger.log(`Serving playground from: ${playgroundPath}`);
-            res.sendFile(playgroundPath);
+            res.redirect(302, '/altair/');
         });
 
         app.all('*', (req: Request, res: Response) => {
