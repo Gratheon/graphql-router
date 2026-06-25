@@ -302,18 +302,80 @@ async function startServer() {
             // ambiguity if Altair is opened outside graphql.gratheon.com, while
             // keeping local/dev endpoints overridable through config/env.
             endpointURL: config.altairEndpointUrl,
-            initialName: 'Gratheon GraphQL API',
-            // Show real schema metadata by default instead of only __typename,
-            // so the public API docs immediately demonstrate introspection.
-            initialQuery: `query IntrospectionSmokeTest {
-  __schema {
-    queryType { name }
-    mutationType { name }
-    types {
-      name
-      kind
+            initialName: 'ListHiveInternals',
+            // Use a real query from the Gratheon web-app hive edit page instead
+            // of a generic introspection smoke test. It demonstrates how the
+            // federated API returns hive structure from swarm-api and vision
+            // analysis fields extended by image-splitter.
+            initialQuery: `query ListHiveInternals($hiveId: ID!) {
+  hive(id: $hiveId) {
+    id
+    hiveNumber
+    hiveType
+    notes
+    beeCount
+    inspectionCount
+    boxes {
+      id
+      position
+      type
+      color
+      holeCount
+      roofStyle
+      frames {
+        id
+        position
+        type
+        leftSide {
+          id
+          frameId
+          frameSideFile {
+            frameSideId
+            queenDetected
+            isQueenDetectionComplete
+            isBeeDetectionComplete
+            isCellsDetectionComplete
+            detectedWorkerBeeCount
+            detectedDroneCount
+          }
+          cells {
+            broodPercent
+            droneBroodPercent
+            cappedBroodPercent
+            eggsPercent
+            nectarPercent
+            pollenPercent
+            honeyPercent
+          }
+        }
+        rightSide {
+          id
+          frameId
+          frameSideFile {
+            frameSideId
+            queenDetected
+            isQueenDetectionComplete
+            isBeeDetectionComplete
+            isCellsDetectionComplete
+            detectedWorkerBeeCount
+            detectedDroneCount
+          }
+          cells {
+            broodPercent
+            droneBroodPercent
+            cappedBroodPercent
+            eggsPercent
+            nectarPercent
+            pollenPercent
+            honeyPercent
+          }
+        }
+      }
     }
   }
+}`,
+            initialVariables: `{
+  "hiveId": "replace-with-your-hive-id"
 }`,
             initialSettings: {
                 'request.withCredentials': true,
