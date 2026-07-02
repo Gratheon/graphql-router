@@ -99,7 +99,7 @@ const contextFunction = async ({ req }: { req: Request }): Promise<MyContext> =>
 
         if (bearer) {
             const bearerToken = bearer.split(' ')[1];
-            const response = await postUserCycleGraphql(userCycleEndpoint, JSON.stringify({ query: `mutation ValidateApiToken($token: String) { validateApiToken(token: $token) { ... on TokenUser { id } ... on Error { code } } }`, variables: { token: bearerToken } }));
+            const response = await postUserCycleGraphql(userCycleEndpoint, JSON.stringify({ query: `mutation ValidateApiToken($token: String) { validateApiToken(token: $token) { __typename ... on TokenUser { id } ... on Error { code } } }`, variables: { token: bearerToken } }));
             const result = await response.json() as { data?: { validateApiToken?: ValidateApiTokenResponse } };
             const validationData = result?.data?.validateApiToken;
             if (validationData?.__typename === 'TokenUser') { contextData = { userId: validationData.id }; }
