@@ -1,9 +1,13 @@
 .idea
 node_modules
 .dccache
-./src/config/config.prod.ts
+src/config/config.dev.ts
+src/config/config.prod.ts
 playground.dev.html
 
 # TypeScript build output
 dist/
 *.tsbuildinfo
+
+coverage
+.DS_Store
