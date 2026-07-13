@@ -3,8 +3,8 @@ export default {
 	redisHost: process.env.REDIS_HOST || (process.env.ENV_ID === 'prod' ? '127.0.0.1' : 'redis'),
 	redisPort: parseInt(process.env.REDIS_PORT || '6379', 10),
 	redisSecret: process.env.REDIS_SECRET || process.env.REDIS_PASSWORD || '',
-	schemaRegistryUrl: 'http://gql-schema-registry:3000',
-	userCycleUrl: 'http://user-cycle:4000',
+	schemaRegistryUrl: process.env.SCHEMA_REGISTRY_URL || (process.env.ENV_ID === 'prod' ? 'http://127.0.0.1:3000' : 'http://gql-schema-registry:3000'),
+	userCycleUrl: process.env.USER_CYCLE_URL || (process.env.ENV_ID === 'prod' ? 'http://127.0.0.1:4000' : 'http://user-cycle:4000'),
 	altairEndpointUrl: process.env.ALTAIR_ENDPOINT_URL || 'https://graphql.gratheon.com/graphql',
 
 	// thist must match user-cycle JWT_KEY
