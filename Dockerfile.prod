@@ -1,4 +1,4 @@
-FROM platformatic/node-caged:25-slim AS base
+FROM platformatic/node-caged:26-slim AS base
 WORKDIR /app
 RUN npm install -g npm@10.1.0
 COPY package.json package-lock.json* ./
