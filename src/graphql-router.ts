@@ -1,7 +1,7 @@
 import { ApolloGateway, ServiceEndpointDefinition } from '@apollo/gateway';
 import { ApolloServer } from 'apollo-server-express';
 import { altairExpress } from 'altair-express-middleware';
-import express, { Request, Response, NextFunction, Router } from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 import cookieParser from 'cookie-parser';
 import jwt from 'jsonwebtoken';
 import cors from 'cors';
@@ -28,8 +28,6 @@ app.use(traceExpressMiddleware());
 //     ],
 //     tracesSampleRate: 1.0,
 // });
-
-const router: Router = express.Router();
 
 // Helper function to safely extract HTTP status code from various error types
 function getStatusCodeFromError(error: any): number {
@@ -175,6 +173,8 @@ interface Scopes { allowedQueries: AllowedQuery[]; }
 type Variables = Record<string, any>;
 
 // Helper function to check if the request matches the allowed scopes
+// Not called since the TypeScript rewrite (ed96069), so share token scopes are currently not enforced here.
+// oxlint-disable-next-line no-unused-vars
 function isRequestAllowed(queryAst: DocumentNode, variables: Variables, scopes: Scopes): boolean {
     if (!scopes?.allowedQueries) { logger.warn('No scopes defined'); return false; }
     let isAllowed = false;
